@@ -1,0 +1,307 @@
+-- =======================================================
+-- ALARIC HUB UI LIBRARY
+-- Version: 1.0 (Modular / Object-Oriented)
+-- =======================================================
+
+local AlaricLibrary = {}
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local env = (getgenv and getgenv()) or _G
+
+-- Tema Warna
+local BG1 = Color3.fromRGB(15, 12, 28); local BG2 = Color3.fromRGB(5, 4, 10)
+local CARD = Color3.fromRGB(24, 20, 42); local BORDER = Color3.fromRGB(90, 60, 180)
+local ACCENT_CYAN = Color3.fromRGB(0, 240, 255); local ACCENT_PURPLE = Color3.fromRGB(180, 50, 255)
+local TEXT = Color3.fromRGB(240, 240, 255); local MUTED = Color3.fromRGB(140, 135, 170)
+local OFFCOL = Color3.fromRGB(40, 35, 65); local RED = Color3.fromRGB(255, 75, 75)
+local WHITE = Color3.new(1, 1, 1)
+
+local QUAD, OUT, INOUT, LINEAR = Enum.EasingStyle.Quad, Enum.EasingDirection.Out, Enum.EasingDirection.In, Enum.EasingStyle.Linear
+
+-- Helper Functions
+local function new(class, props, parent)
+	local inst = Instance.new(class)
+	for k, v in pairs(props or {}) do inst[k] = v end
+	if parent then inst.Parent = parent end
+	return inst
+end
+local function label(props, parent)
+	local base = { BackgroundTransparency = 1, BorderSizePixel = 0, Font = Enum.Font.Gotham, TextColor3 = TEXT, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left }
+	for k, v in pairs(props) do base[k] = v end return new("TextLabel", base, parent)
+end
+local function ti(time, style, dir) return TweenInfo.new(time, style or QUAD, dir or OUT) end
+local function tween(obj, info, goal) local t = TweenService:Create(obj, info, goal); t:Play(); return t end
+local function corner(parent, r) return new("UICorner", { CornerRadius = UDim.new(0, r) }, parent) end
+local function rgbGradient()
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 128, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 128)),
+	})
+end
+
+function AlaricLibrary:CreateWindow(config)
+	local Window = {
+		Name = config.Name or "Alaric Hub",
+		SubTitle = config.SubTitle or "By Unknown",
+		IsAlive = true, -- Gunakan ini di looping Anda! (e.g., while Window.IsAlive do)
+		Tabs = {}
+	}
+	
+	local GUI_NAME = "AlaricLibraryUI_" .. tostring(math.random(1000,9999))
+	if env.__ALARIC_CLEANUP then pcall(env.__ALARIC_CLEANUP) end
+	
+	local function purge(parent)
+		if not parent then return end
+		for _, child in ipairs(parent:GetChildren()) do
+			if string.find(child.Name, "AlaricLibraryUI_") then child:Destroy() end
+		end
+	end
+	pcall(function() purge(gethui and gethui()) end)
+	pcall(function() purge(game:GetService("CoreGui")) end)
+	pcall(function() purge(LocalPlayer:FindFirstChildOfClass("PlayerGui")) end)
+
+	local gui = new("ScreenGui", { Name = GUI_NAME, ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 999 })
+	if syn and syn.protect_gui then pcall(syn.protect_gui, gui) end
+	local mounted = pcall(function() gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
+	if not mounted or not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+	local connections = {}
+	env.__ALARIC_CLEANUP = function()
+		Window.IsAlive = false
+		for _, c in ipairs(connections) do pcall(function() c:Disconnect() end) end
+		pcall(function() gui:Destroy() end)
+	end
+
+	local main = new("Frame", { Name = "Main", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromOffset(540, 440), BackgroundColor3 = WHITE, BorderSizePixel = 0, ClipsDescendants = true, Active = true }, gui)
+	corner(main, 14); new("UIGradient", { Rotation = 90, Color = ColorSequence.new(BG1, BG2) }, main)
+	local mainStroke = new("UIStroke", { Color = WHITE, Thickness = 2, Transparency = 0.1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, main)
+	tween(new("UIGradient", { Color = rgbGradient() }, mainStroke), TweenInfo.new(4, LINEAR, INOUT, -1), { Rotation = 360 })
+	local scale = new("UIScale", { Scale = 0 }, main)
+
+	local sidebarWidth = 140
+	local sidebar = new("Frame", { Size = UDim2.new(0, sidebarWidth, 1, 0), BackgroundColor3 = CARD, BackgroundTransparency = 0.5, BorderSizePixel = 0 }, main)
+	new("Frame", { Size = UDim2.new(0, 1, 1, 0), Position = UDim2.new(1, -1, 0, 0), BackgroundColor3 = BORDER, BackgroundTransparency = 0.5, BorderSizePixel = 0 }, sidebar)
+
+	local titleLabel = label({ Text = Window.Name, Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = WHITE, Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 18), TextXAlignment = Enum.TextXAlignment.Center }, sidebar)
+	tween(new("UIGradient", { Color = rgbGradient(), Rotation = 0 }, titleLabel), TweenInfo.new(5, LINEAR, INOUT, -1), { Rotation = 360 })
+	label({ Text = Window.SubTitle, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = MUTED, Size = UDim2.new(1, 0, 0, 14), Position = UDim2.fromOffset(0, 38), TextXAlignment = Enum.TextXAlignment.Center }, sidebar)
+
+	local tabListContainer = new("ScrollingFrame", { Size = UDim2.new(1, 0, 1, -80), Position = UDim2.fromOffset(0, 80), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 0, CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y }, sidebar)
+	new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }, tabListContainer)
+	new("UIPadding", { PaddingTop = UDim.new(0, 5) }, tabListContainer)
+
+	local contentArea = new("Frame", { Size = UDim2.new(1, -sidebarWidth, 1, 0), Position = UDim2.fromOffset(sidebarWidth, 0), BackgroundTransparency = 1, BorderSizePixel = 0 }, main)
+	
+	-- Top Bar & Controls
+	local topBar = new("Frame", { Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, BorderSizePixel = 0 }, contentArea)
+	new("Frame", { Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = BORDER, BackgroundTransparency = 0.5, BorderSizePixel = 0 }, topBar)
+
+	local destroyBtn = new("TextButton", { Text = "✕", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = RED, BackgroundColor3 = CARD, Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -34, 0, 8), ZIndex = 50 }, topBar)
+	corner(destroyBtn, 6); new("UIStroke", { Color = BORDER, Thickness = 1.2 }, destroyBtn)
+	destroyBtn.MouseEnter:Connect(function() tween(destroyBtn, ti(0.2), { BackgroundColor3 = RED, TextColor3 = WHITE }) end)
+	destroyBtn.MouseLeave:Connect(function() tween(destroyBtn, ti(0.2), { BackgroundColor3 = CARD, TextColor3 = RED }) end)
+	destroyBtn.Activated:Connect(function() env.__ALARIC_CLEANUP() end)
+
+	local minBtn = new("TextButton", { Text = "–", Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = ACCENT_CYAN, BackgroundColor3 = CARD, Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -66, 0, 8), ZIndex = 50 }, topBar)
+	corner(minBtn, 6); new("UIStroke", { Color = BORDER, Thickness = 1.2 }, minBtn)
+	minBtn.MouseEnter:Connect(function() tween(minBtn, ti(0.2), { BackgroundColor3 = OFFCOL }) end)
+	minBtn.MouseLeave:Connect(function() tween(minBtn, ti(0.2), { BackgroundColor3 = CARD }) end)
+
+	local subTabArea = new("Frame", { Size = UDim2.new(1, -80, 1, 0), BackgroundTransparency = 1, ClipsDescendants = true }, topBar)
+	local pageContainer = new("Frame", { Size = UDim2.new(1, 0, 1, -42), Position = UDim2.fromOffset(0, 42), BackgroundTransparency = 1, BorderSizePixel = 0 }, contentArea)
+
+	-- Drag & Minimize Logic
+	local pill = new("TextButton", { Visible = false, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -60), Size = UDim2.fromOffset(260, 40), BackgroundColor3 = WHITE, Text = "" }, gui)
+	corner(pill, 20); new("UIGradient", { Rotation = 90, Color = ColorSequence.new(BG1, BG2) }, pill)
+	local pillStroke = new("UIStroke", { Color = WHITE, Thickness = 2, Transparency = 0.1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, pill)
+	tween(new("UIGradient", { Color = rgbGradient() }, pillStroke), TweenInfo.new(4, LINEAR, INOUT, -1), { Rotation = 360 })
+	label({ Text = "⚡ " .. Window.Name .. " ⚡", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = WHITE, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1) }, pill)
+
+	local busy = false
+	minBtn.Activated:Connect(function()
+		if busy then return end; busy = true
+		tween(scale, ti(0.2, QUAD, Enum.EasingDirection.In), { Scale = 0 }).Completed:Wait()
+		main.Visible = false; pill.Visible = true; pill.Position = UDim2.new(0.5, 0, 0, -60)
+		tween(pill, ti(0.4, Enum.EasingStyle.Back, OUT), { Position = UDim2.new(0.5, 0, 0, 10) })
+		busy = false
+	end)
+	pill.Activated:Connect(function()
+		if busy then return end; busy = true
+		tween(pill, ti(0.22, QUAD, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 0, -60) }).Completed:Wait()
+		pill.Visible = false; scale.Scale = 0; main.Visible = true
+		tween(scale, ti(0.4, Enum.EasingStyle.Back, OUT), { Scale = 1 })
+		busy = false
+	end)
+
+	local dragging, dragStart, startPos
+	main.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true; dragStart = input.Position; startPos = main.Position
+			input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+		end
+	end)
+	table.insert(connections, UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local d = input.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+		end
+	end))
+
+	-- SYSTEM LOGS
+	local logScroll
+	function Window:Log(msg)
+		if not logScroll then return end
+		local timestamp = os.date("%H:%M:%S")
+		label({ Text = "[" .. timestamp .. "] " .. msg, Font = Enum.Font.Code, TextSize = 11, TextColor3 = TEXT, Size = UDim2.new(1, 0, 0, 16), TextWrapped = true }, logScroll)
+		if #logScroll:GetChildren() > 50 then
+			for _, child in ipairs(logScroll:GetChildren()) do if child:IsA("TextLabel") then child:Destroy(); break end end
+		end
+	end
+
+	function Window:CreateTab(tabConfig)
+		local tabName = tabConfig.Name or "Tab"
+		local tabBtn = new("TextButton", { AutoButtonColor = false, Text = tabName, Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = MUTED, BackgroundColor3 = OFFCOL, BackgroundTransparency = 0.8, Size = UDim2.fromOffset(sidebarWidth - 16, 32) }, tabListContainer)
+		corner(tabBtn, 6)
+		local tabStroke = new("UIStroke", { Color = BORDER, Thickness = 1, Transparency = 0.7, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tabBtn)
+		local indicator = new("Frame", { Size = UDim2.new(0, 3, 0, 16), Position = UDim2.new(0, 4, 0.5, -8), BackgroundColor3 = ACCENT_CYAN, BackgroundTransparency = 1, BorderSizePixel = 0 }, tabBtn)
+		corner(indicator, 2)
+
+		local subTabScroll = new("ScrollingFrame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollingDirection = Enum.ScrollingDirection.X, ScrollBarThickness = 0, CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.X, Visible = false }, subTabArea)
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8), FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center }, subTabScroll)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, subTabScroll)
+
+		local Tab = { Window = Window, SubTabs = {}, btn = tabBtn, subScroll = subTabScroll, ind = indicator, stroke = tabStroke }
+		table.insert(Window.Tabs, Tab)
+
+		tabBtn.Activated:Connect(function()
+			for _, t in ipairs(Window.Tabs) do
+				t.subScroll.Visible = false
+				for _, st in ipairs(t.SubTabs) do st.page.Visible = false end
+				tween(t.btn, ti(0.2), { TextColor3 = MUTED, BackgroundTransparency = 0.8 })
+				tween(t.stroke, ti(0.2), { Transparency = 0.7, Color = BORDER })
+				tween(t.ind, ti(0.2), { BackgroundTransparency = 1 })
+			end
+			subTabScroll.Visible = true
+			tween(tabBtn, ti(0.2), { TextColor3 = WHITE, BackgroundTransparency = 0.2 })
+			tween(tabStroke, ti(0.2), { Transparency = 0, Color = ACCENT_CYAN })
+			tween(indicator, ti(0.2), { BackgroundTransparency = 0 })
+			if #Tab.SubTabs > 0 then
+				local activeSub = Tab.activeSub or Tab.SubTabs[1]
+				activeSub.btn.TextColor3 = WHITE; activeSub.indicator.BackgroundTransparency = 0; activeSub.page.Visible = true
+			end
+		end)
+
+		function Tab:CreateSubTab(subConfig)
+			local subName = subConfig.Name or "SubTab"
+			local subBtn = new("TextButton", { Text = subName, Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = MUTED, BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X }, subTabScroll)
+			new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, subBtn)
+			local subIndicator = new("Frame", { Size = UDim2.new(1, -8, 0, 2), Position = UDim2.new(0.5, 0, 1, -2), AnchorPoint = Vector2.new(0.5, 0), BackgroundColor3 = ACCENT_CYAN, BackgroundTransparency = 1, BorderSizePixel = 0 }, subBtn)
+
+			local page = new("ScrollingFrame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENT_PURPLE, CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y, Visible = false }, pageContainer)
+			new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Center }, page)
+			new("UIPadding", { PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 16) }, page)
+
+			local SubTab = { Tab = Tab, btn = subBtn, page = page, indicator = subIndicator }
+			table.insert(Tab.SubTabs, SubTab)
+
+			subBtn.Activated:Connect(function()
+				for _, st in ipairs(Tab.SubTabs) do
+					st.page.Visible = false
+					tween(st.btn, ti(0.2), { TextColor3 = MUTED })
+					tween(st.indicator, ti(0.2), { BackgroundTransparency = 1 })
+				end
+				page.Visible = true
+				tween(subBtn, ti(0.2), { TextColor3 = WHITE })
+				tween(subIndicator, ti(0.2), { BackgroundTransparency = 0 })
+				Tab.activeSub = SubTab
+			end)
+
+			if #Tab.SubTabs == 1 and subTabScroll.Visible then
+				page.Visible = true; subBtn.TextColor3 = WHITE; subIndicator.BackgroundTransparency = 0; Tab.activeSub = SubTab
+			end
+
+			local cardWidth = 360
+
+			function SubTab:CreateToggle(opts)
+				local name = opts.Name or "Toggle"
+				local callback = opts.Callback or function() end
+				local card = new("TextButton", { Text = "", Size = UDim2.fromOffset(cardWidth, 44), BackgroundColor3 = CARD, BackgroundTransparency = 0.1, AutoButtonColor = false }, page)
+				corner(card, 8); new("UIStroke", { Color = BORDER, Thickness = 1.2, Transparency = 0.5 }, card)
+				label({ Text = name, Font = Enum.Font.GothamBold, TextSize = 13, Size = UDim2.fromOffset(200, 20), Position = UDim2.fromOffset(14, 12) }, card)
+
+				local track = new("Frame", { Size = UDim2.fromOffset(40, 20), Position = UDim2.new(1, -54, 0.5, -10), BackgroundColor3 = OFFCOL }, card)
+				corner(track, 10); local knob = new("Frame", { Size = UDim2.fromOffset(14, 14), Position = UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = MUTED }, track); corner(knob, 7)
+
+				local enabled = false
+				card.Activated:Connect(function()
+					enabled = not enabled
+					tween(track, ti(0.2), { BackgroundColor3 = enabled and ACCENT_CYAN or OFFCOL })
+					tween(knob, ti(0.2), { Position = enabled and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7), BackgroundColor3 = enabled and WHITE or MUTED })
+					callback(enabled)
+				end)
+			end
+
+			function SubTab:CreateInput(opts)
+				local name = opts.Name or "Input"
+				local placeholder = opts.Placeholder or "Angka..."
+				local callback = opts.Callback or function() end
+				local card = new("Frame", { Size = UDim2.fromOffset(cardWidth, 44), BackgroundColor3 = CARD, BackgroundTransparency = 0.1 }, page)
+				corner(card, 8); new("UIStroke", { Color = BORDER, Thickness = 1.2, Transparency = 0.5 }, card)
+				label({ Text = name, Font = Enum.Font.GothamBold, TextSize = 13, Size = UDim2.fromOffset(180, 20), Position = UDim2.fromOffset(14, 12) }, card)
+
+				local inputFrame = new("Frame", { Size = UDim2.fromOffset(100, 26), Position = UDim2.new(1, -114, 0.5, -13), BackgroundColor3 = OFFCOL }, card)
+				corner(inputFrame, 6); new("UIStroke", { Color = BORDER, Thickness = 1, Transparency = 0.5 }, inputFrame)
+
+				local textBox = new("TextBox", { Size = UDim2.new(1, -10, 1, 0), Position = UDim2.fromOffset(5, 0), BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = WHITE, PlaceholderText = placeholder, ClearTextOnFocus = false }, inputFrame)
+				textBox:GetPropertyChangedSignal("Text"):Connect(function() textBox.Text = textBox.Text:gsub("%D", "") end)
+				textBox.FocusLost:Connect(function() if textBox.Text ~= "" then callback(tonumber(textBox.Text)) end end)
+			end
+
+			function SubTab:CreateDropdown(opts)
+				local name = opts.Name or "Dropdown"
+				local options = opts.Options or {}
+				local callback = opts.Callback or function() end
+				local baseHeight = 44; local optionHeight = 28; local isOpen = false
+
+				local card = new("Frame", { Size = UDim2.fromOffset(cardWidth, baseHeight), BackgroundColor3 = CARD, BackgroundTransparency = 0.1, ClipsDescendants = true }, page)
+				corner(card, 8); local stroke = new("UIStroke", { Color = BORDER, Thickness = 1.2, Transparency = 0.5 }, card)
+				local btn = new("TextButton", { Size = UDim2.new(1, 0, 0, baseHeight), BackgroundTransparency = 1, Text = "" }, card)
+				label({ Text = name, Font = Enum.Font.GothamBold, TextSize = 13, Size = UDim2.fromOffset(200, 20), Position = UDim2.fromOffset(14, 12) }, btn)
+				local currentSelected = label({ Text = "Pilih...", TextColor3 = MUTED, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.fromOffset(100, 20), Position = UDim2.new(1, -134, 0, 12) }, btn)
+				local arrow = label({ Text = "▼", TextColor3 = MUTED, TextSize = 12, Size = UDim2.fromOffset(20, 20), Position = UDim2.new(1, -30, 0, 12) }, btn)
+				new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, card)
+				
+				for _, optName in ipairs(options) do
+					local optBtn = new("TextButton", { Size = UDim2.new(1, -16, 0, optionHeight), Position = UDim2.fromOffset(8, 0), BackgroundColor3 = OFFCOL, BackgroundTransparency = 0.5, Text = optName, Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = MUTED, AutoButtonColor = false }, card)
+					corner(optBtn, 4)
+					optBtn.MouseEnter:Connect(function() tween(optBtn, ti(0.2), { BackgroundTransparency = 0, TextColor3 = WHITE }) end)
+					optBtn.MouseLeave:Connect(function() tween(optBtn, ti(0.2), { BackgroundTransparency = 0.5, TextColor3 = MUTED }) end)
+					optBtn.Activated:Connect(function() currentSelected.Text = optName; callback(optName); isOpen = false; tween(card, ti(0.3), { Size = UDim2.fromOffset(cardWidth, baseHeight) }); tween(arrow, ti(0.3), { Rotation = 0 }) end)
+				end
+				btn.Activated:Connect(function() isOpen = not isOpen; local targetHeight = isOpen and (baseHeight + (#options * optionHeight) + (#options * 2) + 8) or baseHeight; tween(card, ti(0.3), { Size = UDim2.fromOffset(cardWidth, targetHeight) }); tween(arrow, ti(0.3), { Rotation = isOpen and 180 or 0 }) end)
+			end
+
+			-- Setup Logger Area if Name is "System Logs"
+			if subName == "System Logs" then
+				logScroll = new("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -10), Position = UDim2.fromOffset(8, 0), BackgroundTransparency = 1, BorderSizePixel = 0, AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 4, ScrollBarImageColor3 = ACCENT_PURPLE }, page)
+				new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, logScroll)
+			end
+
+			return SubTab
+		end
+		
+		if #Window.Tabs == 1 then
+			subTabScroll.Visible = true; tabBtn.TextColor3 = WHITE; tabBtn.BackgroundTransparency = 0.2
+			tabStroke.Transparency = 0; tabStroke.Color = ACCENT_CYAN; indicator.BackgroundTransparency = 0
+		end
+
+		return Tab
+	end
+
+	tween(scale, ti(0.5, Enum.EasingStyle.Back, OUT), { Scale = 1 })
+	return Window
+end
+
+return AlaricLibrary
