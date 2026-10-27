@@ -243,6 +243,72 @@ function AlaricLibrary:CreateWindow(config)
 				end)
 			end
 
+			-- FITUR 1: SECTION (Pemisah / Judul Kategori Kecil)
+			function SubTab:CreateSection(sectionName)
+				local sectionLabel = label({
+					Text = sectionName,
+					Font = Enum.Font.GothamBold,
+					TextSize = 12,
+					TextColor3 = MUTED,
+					Size = UDim2.fromOffset(cardWidth, 20),
+					Position = UDim2.fromOffset(14, 0),
+					TextXAlignment = Enum.TextXAlignment.Left
+				}, page)
+				
+				return {
+					Set = function(newText)
+						sectionLabel.Text = newText
+					end
+				}
+			end
+
+			-- FITUR 2: BUTTON (Tombol Klik)
+			function SubTab:CreateButton(opts)
+				local name = opts.Name or "Button"
+				local callback = opts.Callback or function() end
+
+				local btnCard = new("TextButton", {
+					Text = "",
+					Size = UDim2.fromOffset(cardWidth, 38),
+					BackgroundColor3 = CARD,
+					BackgroundTransparency = 0.1,
+					AutoButtonColor = false
+				}, page)
+				
+				corner(btnCard, 8)
+				new("UIStroke", { Color = BORDER, Thickness = 1.2, Transparency = 0.5 }, btnCard)
+
+				label({
+					Text = name,
+					Font = Enum.Font.GothamBold,
+					TextSize = 13,
+					Size = UDim2.fromOffset(cardWidth - 28, 20),
+					Position = UDim2.fromOffset(14, 9),
+					TextXAlignment = Enum.TextXAlignment.Center -- Teks tombol di tengah
+				}, btnCard)
+
+				-- Efek hover & klik
+				btnCard.MouseEnter:Connect(function()
+					tween(btnCard, ti(0.2), { BackgroundColor3 = OFFCOL })
+				end)
+				btnCard.MouseLeave:Connect(function()
+					tween(btnCard, ti(0.2), { BackgroundColor3 = CARD })
+				end)
+
+				btnCard.Activated:Connect(function()
+					-- Efek kilat saat diklik
+					tween(btnCard, ti(0.1), { BackgroundColor3 = ACCENT_CYAN })
+					task.wait(0.1)
+					tween(btnCard, ti(0.2), { BackgroundColor3 = CARD })
+					
+					-- Jalankan fungsi callback pengguna
+					success, err = pcall(callback)
+					if not success then
+						warn("AlaricLibrary Error [Button]: " .. tostring(err))
+					end
+				end)
+			end
+
 			function SubTab:CreateInput(opts)
 				local name = opts.Name or "Input"
 				local placeholder = opts.Placeholder or "Angka..."
